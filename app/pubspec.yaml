@@ -1,0 +1,27 @@
+name: smartpantry
+description: SmartPantry - SpesaOttimizzata. Confronta i prezzi dei supermercati vicini e ottimizza la lista della spesa.
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.6.1
+  go_router: ^14.6.2
+  dio: ^5.7.0
+  shared_preferences: ^2.3.3
+  geolocator: ^13.0.2
+  image_picker: ^1.1.2
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true

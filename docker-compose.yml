@@ -1,0 +1,31 @@
+# Avvio: docker compose up --build
+# API su http://localhost:8000 (documentazione interattiva: http://localhost:8000/docs)
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_PASSWORD: smartpantry
+      POSTGRES_DB: smartpantry
+    ports: ["5432:5432"]
+    volumes: [dbdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d smartpantry"]
+      interval: 3s
+      retries: 20
+
+  api:
+    build: ./backend
+    depends_on:
+      db: {condition: service_healthy}
+    environment:
+      DATABASE_URL: postgresql://postgres:smartpantry@db:5432/smartpantry
+      JWT_SECRET: cambia-questo-segreto
+      DEV_MODE: "1"              # Premium demo e creazione negozi demo vicino all'utente
+      OCR_PROVIDER: demo         # "google_vision" + GOOGLE_VISION_API_KEY per l'OCR vero
+      GOOGLE_VISION_API_KEY: ""
+    ports: ["8000:8000"]
+    volumes: [uploads:/srv/uploads]
+
+volumes:
+  dbdata:
+  uploads:

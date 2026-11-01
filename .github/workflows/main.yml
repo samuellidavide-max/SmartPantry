@@ -1,1 +1,84 @@
+# Compila l'app Android (APK) e fa girare i test del backend a ogni push.
+# L'APK finisce nella pagina "Releases" del repository: aprila dal telefono e installala.
+name: Build APK e test
 
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_PASSWORD: smartpantry
+          POSTGRES_DB: smartpantry_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 3s --health-retries 20
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: pytest -q
+        env:
+          DATABASE_URL: postgresql://postgres:smartpantry@localhost:5432/smartpantry_test
+
+  android-apk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: "3.27.4"
+          cache: true
+
+      - name: Prepara cartelle Android e permessi
+        run: dart run tool/setup_platforms.dart
+
+      - run: flutter pub get
+
+      - name: Analisi del codice
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - run: flutter test
+
+      - name: Compila APK
+        run: flutter build apk --release --dart-define=API_BASE_URL=${{ vars.API_BASE_URL || 'http://10.0.2.2:8000' }}
+
+      - name: Rinomina APK
+        run: cp build/app/outputs/flutter-apk/app-release.apk smartpantry-${{ github.run_number }}.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: smartpantry-apk
+          path: app/smartpantry-${{ github.run_number }}.apk
+
+      - name: Pubblica nella pagina Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: SmartPantry build ${{ github.run_number }}
+          body: APK di test. Sul telefono Android scarica il file .apk qui sotto e aprilo per installarlo.
+          files: app/smartpantry-${{ github.run_number }}.apk
